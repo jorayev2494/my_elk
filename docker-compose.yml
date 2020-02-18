@@ -1,0 +1,127 @@
+version: '3.2'
+
+services:
+    # Elasticsearch Service
+    elasticsearch:
+        build:
+            context: ./elk/elasticsearch/
+            args:
+                ELK_VERSION: $ELK_VERSION
+        container_name: ${PROJECT_NAME}_elasticsearch
+        volumes:
+            -   type: bind                                                              # Config Elasticsearch
+                source: ./elk/elasticsearch/config/elasticsearch.yml                    # Config Elasticsearch
+                target: /usr/share/elasticsearch/config/elasticsearch.yml               # Config Elasticsearch
+                read_only: true                                                         # Config Elasticsearch
+
+            -   type: volume
+                source: elasticsearch
+                target: /usr/share/elasticsearch/data
+        ports:
+            - "9200:9200"
+            - "9300:9300"
+        environment:
+            ES_JAVA_OPTS: "-Xmx256m -Xms256m"
+            ELASTIC_PASSWORD: changeme
+            # Use single node discovery in order to disable production mode and avoid bootstrap checks
+            # see https://www.elastic.co/guide/en/elasticsearch/reference/current/bootstrap-checks.html
+            discovery.type: single-node
+        networks:
+            - elk
+    
+    # Filebeat Service
+    filebeat:
+        build: 
+            context: ./elk/filebeat
+            dockerfile: Dockerfile
+            args: 
+                ELK_VERSION: $ELK_VERSION
+        container_name: ${PROJECT_NAME}_filebeat
+        user: root
+        volumes: 
+            - ./elk/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml              # Settings
+            - ./logs:/usr/share/filebeat/logs:ro                                        # Input Logs: in Container
+        command:
+            - "-e"
+            - "--strict.perms=false"
+        depends_on: 
+            - logstash
+        networks: 
+            - elk
+
+    # Logstash Service
+    logstash:
+        build:
+            context: ./elk/logstash/
+            args:
+                ELK_VERSION: $ELK_VERSION
+        container_name: ${PROJECT_NAME}_logstash
+        volumes:
+            -   type: bind                                                              # Config Logstash
+                source: ./elk/logstash/config/logstash.yml                              # Config Logstash
+                target: /usr/share/logstash/config/logstash.yml                         # Config Logstash
+                read_only: true                                                         # Config Logstash
+
+            -   type: bind                                                              # Pipeline Logstash
+                source: ./elk/logstash/pipeline                                         # Pipeline Logstash
+                target: /usr/share/logstash/pipeline                                    # Pipeline Logstash
+                read_only: true                                                         # Pipeline Logstash
+        ports:
+            - "5000:5000/tcp"           # Nginx     TCP
+            - "5000:5000/udp"           # Nginx     UDP
+            # - 2000:2000/tcp             # Laravel   TCP
+            - "2000:2000"              # Laravel   Beats
+            - "9600:9600"
+        environment:
+            LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+        networks:
+            - elk
+        depends_on:
+            - elasticsearch
+    
+    # Kibana Service
+    kibana:
+        build:
+            context: ./elk/kibana/
+            args:
+                ELK_VERSION: $ELK_VERSION
+        container_name: ${PROJECT_NAME}_kibana
+        volumes:
+            -   type: bind                                                              # Config Kibana
+                source: ./elk/kibana/config/kibana.yml                                  # Config Kibana
+                target: /usr/share/kibana/config/kibana.yml                             # Config Kibana
+                read_only: true                                                         # Config Kibana
+        ports:
+            - "5601:5601"
+        networks:
+            - elk
+        depends_on:
+            - elasticsearch
+
+
+
+    # region Test Server
+    # TEST Nginx Server
+    webserver:
+        build: 
+            context: ./services/nginx
+            dockerfile: dockerfile
+        container_name: ${PROJECT_NAME}_nginx
+        restart: unless-stopped
+        tty: true
+        volumes:
+            - ./:/var/www/project
+            - ./logs/nginx:/var/log/nginx/
+        ports: 
+            - 8080:80
+        networks: 
+            - elk
+    #endregion
+        
+
+networks:
+  elk:
+    driver: bridge
+
+volumes:
+  elasticsearch:

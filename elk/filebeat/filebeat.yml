@@ -1,0 +1,59 @@
+filebeat.inputs:
+    -   type: log
+        enabled: true
+        paths:
+            - ./logs/*/*.log                          # Everything log dirs and log files
+            - ./logs/laravel/*.log                    # Laravel logs
+            - ./logs/nginx/*.log                      # Nginx logs
+            # - ./share/filebeat/logs/laravel/*.log
+            # - ./var/logs/laravel/*.log
+        fields:
+            type: laravel
+        fields_under_root: true
+        scan_frequency: 5ms
+    
+    # -   type: log
+    #     enabled: true
+    #     paths:
+    #         - ./logs/*/*.log                          # Everything log dirs and log files
+    #         - ./logs/laravel/*.log                    # Laravel logs
+    #         - ./logs/nginx/*.log                      # Nginx logs
+    #         # - ./share/filebeat/logs/laravel/*.log
+    #         # - ./var/logs/laravel/*.log
+    #     fields:
+    #         type: laravel
+    #     fields_under_root: true
+    #     scan_frequency: 5ms
+
+    # -   type: log
+    #     enabled: true
+    #     paths:
+    #         - ./logs/*/*.log                          # Everything log dirs and log files
+    #         - ./logs/laravel/*.log                    # Laravel logs
+    #         - ./logs/nginx/*.log                      # Nginx logs
+    #         # - ./share/filebeat/logs/laravel/*.log
+    #         # - ./var/logs/laravel/*.log
+    #     fields:
+    #         type: laravel
+    #     fields_under_root: true
+    #     scan_frequency: 5ms
+
+# Output
+output.logstash:
+    enabled: true
+    hosts: ["logstash:2000"]
+
+# output:
+#     logstash:
+#         hosts: ["logstash:2000"]
+#     file:
+#         path: /usr/share/filebeat/output
+
+# output:
+#     file:
+#         path: "/usr/share/filebeatOut"
+#         filename: filebeat
+
+# output.console:
+#     pretty: true
+    
